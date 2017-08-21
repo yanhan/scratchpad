@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+main() {
+	stack exec accuweather-api-exp-exe
+}
+
+main "$@"
+# vim:noet
