@@ -88,6 +88,10 @@ report_weather response_body datetime_string_with_zone datetime_string = do
     where
         sg_timezone = TimeZone 480 False "+0800"
 
+-- Converts a Nothing to `Left e`, converts a `Just a` to `Right (a, b)`
+maybeE :: e -> Maybe a -> b -> Either e (a, b)
+maybeE e mb extra_arg = maybe (Left e) (\a -> Right (a, extra_arg)) mb
+
 main :: IO ()
 main = do
     -- Read in API key
@@ -95,33 +99,37 @@ main = do
     let path_to_config_file = cur_dir </> "config"
     config_file_exists <- doesFileExist path_to_config_file
     if config_file_exists
-       then do
-           api_key <- fmap pack $ readFile path_to_config_file
-           let opts = defaults & param "apikey" .~ [api_key]
-           r <- getWith opts "http://dataservice.accuweather.com/forecasts/v1/hourly/1hour/300597"
-           maybe
-               (putStrLn "Response has no body")
-               (\r_body ->
-                   maybe
-                       (TIO.putStrLn "Error extracting `DateTime` from response")
-                       (\datetime_with_timezone ->
-                           either
-                               (\_ -> TIO.putStrLn $
-                                   "Error parsing datestring `" `mappend`
-                                       datetime_with_timezone  `mappend`
-                                       "`"
-                               )
-                               (report_weather r_body datetime_with_timezone)
-                               (parse datetime_parser "AccuWeather API"
-                                   (unpack datetime_with_timezone)
-                               )
-                       )
-                       (listToMaybe $ r_body ^.. nth 0 . key "DateTime" . _String)
-               )
-               (r ^? responseBody)
+        then do
+            api_key <- fmap pack $ readFile path_to_config_file
+            let opts = defaults & param "apikey" .~ [api_key]
+            r <- getWith opts "http://dataservice.accuweather.com/forecasts/v1/hourly/1hour/300597"
+            let x = maybeE (putStrLn "Response has no body") (r ^? responseBody) () >>= (
+                     \(r_body, _) ->
+                         maybeE
+                             (putStrLn "Error extracting `DateTime` from response")
+                             (listToMaybe $ r_body ^.. nth 0 . key "DateTime" . _String)
+                             r_body
+                 ) >>= (
+                    \(datetime_with_timezone, r_body) ->
+                        either
+                            (\_ -> Left $
+                                TIO.putStrLn $ "Error parsing datestring `" `mappend`
+                                    datetime_with_timezone  `mappend` "`"
+                            )
+                            (\datetime_string -> Right $
+                                report_weather
+                                    r_body
+                                    datetime_with_timezone
+                                    datetime_string
+                            )
+                            (parse
+                                datetime_parser
+                                "AccuWeather API"
+                                (unpack datetime_with_timezone)
+                            )
+                 )
+            either id id x
         else do
-            putStrLn $
-                "Config file `" `mappend`
-                path_to_config_file `mappend`
+            putStrLn $ "Config file `" `mappend` path_to_config_file `mappend`
                 "` does not exist. Please create it. Its contents should be a single line containing the Accuweather API key."
             exitWith $ ExitFailure 1
