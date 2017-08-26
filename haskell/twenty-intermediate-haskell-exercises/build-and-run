@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+main() {
+	stack install
+	stack exec twenty-intermediate-haskell-exercises-exe "$@"
+}
+
+main "$@"
+
+# vim:noet
