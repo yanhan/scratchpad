@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+main() {
+	stack install
+	stack exec basic-monad-tx-exe
+}
+
+main "$@"
+# vim:noet
