@@ -19,6 +19,7 @@ import Servant
        ((:>), (:<|>)(..), Application, Get, Handler, Post, Proxy(Proxy),
         ReqBody, Server, serve)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
+import Servant.API.QueryParam (QueryParam)
 
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
@@ -54,6 +55,12 @@ usersPostHandler u =
       ", month = " <> pack (show month) <> ", day = " <> pack (show day)
     return NoContent
 
+usersOfAge :: Maybe Int -> Handler [User]
+usersOfAge maybeAge =
+  case maybeAge of
+    Just a -> return $ filter (\user -> age user == a) users
+    Nothing -> return []
+
 type UserAPI =
   -- GET /users
   "users" :> Get '[JSON] [User]
@@ -64,10 +71,14 @@ type UserAPI =
   --
   -- The `NoContent` is how we indicate that an endpoint does not return anything
   :<|> "users" :> ReqBody '[JSON] User :> Post '[JSON] NoContent
+  -- Query parameter and additional static path fragment
+  -- curl -vvv 'http://127.0.0.1:8003/users/qq?age=136'
+  :<|> "users" :> "qq" :> QueryParam "age" Int :> Get '[JSON] [User]
 
 userServer :: Server UserAPI
 userServer = return users
   :<|> usersPostHandler
+  :<|> usersOfAge
 
 userAPI :: Proxy UserAPI
 userAPI = Proxy
