@@ -59,7 +59,7 @@ type UserAPI =
   -- POST /users
   -- this expects post data for a `User` in JSON form. For instance:
   --
-  --     curl -XPOST -H 'Content-Type: application/json' -d '{"name": "Haskell Curry", "age": 118, "email": "haskell.curry@haskell.org", "birthDate": "12-09-1900"}'  http://127.0.0.1:8083/users
+  --     curl -XPOST -H 'Content-Type: application/json' -d '{"name": "Haskell Curry", "age": 118, "email": "haskell.curry@haskell.org", "birthDate": "1900-09-12"}'  http://127.0.0.1:8083/users
   :<|> "users" :> ReqBody '[JSON] User :> Post '[JSON] NoContent
 
 userServer :: Server UserAPI
