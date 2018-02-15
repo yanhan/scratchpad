@@ -8,6 +8,7 @@ module Main where
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Function ((&))
+import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack)
 import Data.Text.IO as TIO
@@ -18,6 +19,7 @@ import Network.Wai.Handler.Warp
 import Servant
        ((:>), (:<|>)(..), Application, Get, Handler, Post, Proxy(Proxy),
         ReqBody, Server, serve)
+import Servant.API.Capture (Capture)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
 import Servant.API.QueryParam (QueryParam)
 
@@ -108,9 +110,15 @@ countries =
   ]
 
 type CountriesAPI = "countries" :> "list" :> Get '[JSON] [Country]
+  :<|> "countries" :> Capture "countrycode" Text :> Get '[JSON] (Maybe Country)
+
+getCountryByCode :: Text -> Handler (Maybe Country)
+getCountryByCode c = return $
+  listToMaybe $ filter (\country -> countryCode country == c) countries
 
 countriesServer :: Server CountriesAPI
 countriesServer = return countries
+  :<|> getCountryByCode
 
 countriesAPI :: Proxy CountriesAPI
 countriesAPI = Proxy
