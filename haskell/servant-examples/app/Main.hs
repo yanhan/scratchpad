@@ -23,6 +23,7 @@ import Servant.API.QueryParam (QueryParam)
 
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
+  :<|> CountriesAPI
 
 overallAPI :: Proxy OverallAPI
 overallAPI = Proxy
@@ -92,10 +93,35 @@ healthCheckServer :: Server HealthCheckAPI
 healthCheckServer = return "OK"
 
 
+data Country = Country
+  { countryName :: Text
+  , countryCode :: Text
+  } deriving (Eq, Show, Generic)
+
+instance FromJSON Country
+instance ToJSON Country
+
+countries :: [Country]
+countries =
+  [ Country "China"  "CN"
+  , Country "Malaysia"  "MY"
+  ]
+
+type CountriesAPI = "countries" :> "list" :> Get '[JSON] [Country]
+
+countriesServer :: Server CountriesAPI
+countriesServer = return countries
+
+countriesAPI :: Proxy CountriesAPI
+countriesAPI = Proxy
+
+
 -- This is how you support multiple API types
 app :: Application
 app = serve overallAPI $
-  healthCheckServer :<|> userServer
+  healthCheckServer
+  :<|> userServer
+  :<|> countriesServer
 
 
 port :: Int
