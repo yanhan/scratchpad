@@ -44,6 +44,7 @@ users =
   , User "Albert Einstein"  136  "ae@mc2.org"  (fromGregorian 1905 12 1)
   ]
 
+-- The `NoContent` is how we indicate that an endpoint does not return anything
 usersPostHandler :: User -> Handler NoContent
 usersPostHandler u =
   let (year, month, day) = toGregorian $ birthDate u
@@ -60,6 +61,8 @@ type UserAPI =
   -- this expects post data for a `User` in JSON form. For instance:
   --
   --     curl -XPOST -H 'Content-Type: application/json' -d '{"name": "Haskell Curry", "age": 118, "email": "haskell.curry@haskell.org", "birthDate": "1900-09-12"}'  http://127.0.0.1:8083/users
+  --
+  -- The `NoContent` is how we indicate that an endpoint does not return anything
   :<|> "users" :> ReqBody '[JSON] User :> Post '[JSON] NoContent
 
 userServer :: Server UserAPI
