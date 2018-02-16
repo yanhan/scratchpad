@@ -16,12 +16,14 @@ import Data.Time.Calendar (Day, fromGregorian, toGregorian)
 import GHC.Generics (Generic)
 import Network.Wai.Handler.Warp
        (defaultSettings, runSettings, setHost, setPort)
-import Servant
-       ((:>), (:<|>)(..), Application, Get, Handler, Post, Proxy(Proxy),
-        ReqBody, Server, serve)
+import Servant (Proxy(Proxy))
+import Servant.API ((:>), (:<|>)(..))
 import Servant.API.Capture (Capture)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
 import Servant.API.QueryParam (QueryParam)
+import Servant.API.ReqBody (ReqBody)
+import Servant.API.Verbs (Get, Post)
+import Servant.Server (Application, Handler, Server, serve)
 
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
