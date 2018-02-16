@@ -20,6 +20,7 @@ import Servant (Proxy(Proxy))
 import Servant.API ((:>), (:<|>)(..))
 import Servant.API.Capture (Capture)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
+import Servant.API.Header (Header)
 import Servant.API.QueryParam (QueryParam)
 import Servant.API.ReqBody (ReqBody)
 import Servant.API.Verbs (Get, Post)
@@ -28,6 +29,7 @@ import Servant.Server (Application, Handler, Server, serve)
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
   :<|> CountriesAPI
+  :<|> UserAgentAPI
 
 overallAPI :: Proxy OverallAPI
 overallAPI = Proxy
@@ -126,12 +128,28 @@ countriesAPI :: Proxy CountriesAPI
 countriesAPI = Proxy
 
 
+-- This part shows how you can extract the value of a HTTP Header
+type UserAgentAPI = "user_agent" :> Header "User-Agent" Text :> Get '[JSON] Text
+
+userAgentAPI :: Proxy UserAgentAPI
+userAgentAPI = Proxy
+
+userAgentServer :: Server UserAgentAPI
+userAgentServer userAgent =
+  case userAgent of
+    Just s -> do
+      liftIO . TIO.putStrLn $ "The user's user-agent is \"" <> s <> "\""
+      return s
+    Nothing -> return "The user did not specify the User-Agent header"
+
+
 -- This is how you support multiple API types
 app :: Application
 app = serve overallAPI $
   healthCheckServer
   :<|> userServer
   :<|> countriesServer
+  :<|> userAgentServer
 
 
 port :: Int
