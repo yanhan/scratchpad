@@ -28,6 +28,7 @@ executable servant-examples
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , aeson
+                     , mtl
                      , servant
                      , servant-server
                      , servant-examples

@@ -5,6 +5,7 @@
 
 module Main where
 
+import Control.Monad.Except (throwError)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Function ((&))
@@ -24,7 +25,8 @@ import Servant.API.Header (Header)
 import Servant.API.QueryParam (QueryParam)
 import Servant.API.ReqBody (ReqBody)
 import Servant.API.Verbs (Get, Post)
-import Servant.Server (Application, Handler, Server, serve)
+import Servant.Server
+       (Application, Handler, ServantErr(errBody), Server, err500, serve)
 
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
@@ -115,14 +117,23 @@ countries =
 
 type CountriesAPI = "countries" :> "list" :> Get '[JSON] [Country]
   :<|> "countries" :> Capture "countrycode" Text :> Get '[JSON] (Maybe Country)
+  :<|> "countries" :> "err" :> Capture "x" Text :> Get '[JSON] Country
 
 getCountryByCode :: Text -> Handler (Maybe Country)
 getCountryByCode c = return $
   listToMaybe $ filter (\country -> countryCode country == c) countries
 
+-- This shows how you can throw an error inside the Handler monad
+getCountryPerhapsError :: Text -> Handler Country
+getCountryPerhapsError x =
+  if x == "CN"
+     then return $ Country "China"  "CN"
+     else throwError $ err500 { errBody = "A custom error. You can change this!" }
+
 countriesServer :: Server CountriesAPI
 countriesServer = return countries
   :<|> getCountryByCode
+  :<|> getCountryPerhapsError
 
 countriesAPI :: Proxy CountriesAPI
 countriesAPI = Proxy
