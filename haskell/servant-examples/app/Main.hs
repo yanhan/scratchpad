@@ -23,6 +23,7 @@ import Servant.API.Capture (Capture)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
 import Servant.API.Header (Header)
 import Servant.API.QueryParam (QueryParam)
+import Servant.API.ResponseHeaders (Headers, addHeader)
 import Servant.API.ReqBody (ReqBody)
 import Servant.API.Verbs (Get, Post)
 import Servant.Server
@@ -118,6 +119,7 @@ countries =
 type CountriesAPI = "countries" :> "list" :> Get '[JSON] [Country]
   :<|> "countries" :> Capture "countrycode" Text :> Get '[JSON] (Maybe Country)
   :<|> "countries" :> "err" :> Capture "x" Text :> Get '[JSON] Country
+  :<|> "countries_add_header" :> Get '[JSON] (Headers '[Header "Sentry-Duty" Int] Country)
 
 getCountryByCode :: Text -> Handler (Maybe Country)
 getCountryByCode c = return $
@@ -130,10 +132,14 @@ getCountryPerhapsError x =
      then return $ Country "China"  "CN"
      else throwError $ err500 { errBody = "A custom error. You can change this!" }
 
+getCountryAddHeaderHandler :: Handler (Headers '[Header "Sentry-Duty" Int] Country)
+getCountryAddHeaderHandler = return $ addHeader 47 $ Country "Netherlands"  "NL"
+
 countriesServer :: Server CountriesAPI
 countriesServer = return countries
   :<|> getCountryByCode
   :<|> getCountryPerhapsError
+  :<|> getCountryAddHeaderHandler
 
 countriesAPI :: Proxy CountriesAPI
 countriesAPI = Proxy
