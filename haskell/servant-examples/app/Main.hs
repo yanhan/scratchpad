@@ -23,16 +23,19 @@ import Servant.API.Capture (Capture)
 import Servant.API.ContentTypes (JSON, NoContent(NoContent), PlainText)
 import Servant.API.Header (Header)
 import Servant.API.QueryParam (QueryParam)
+import Servant.API.Raw (Raw)
 import Servant.API.ResponseHeaders (Headers, addHeader)
 import Servant.API.ReqBody (ReqBody)
 import Servant.API.Verbs (Get, Post)
 import Servant.Server
        (Application, Handler, ServantErr(errBody), Server, err500, serve)
+import Servant.Utils.StaticFiles (serveDirectoryWebApp)
 
 type OverallAPI = HealthCheckAPI
   :<|> UserAPI
   :<|> CountriesAPI
   :<|> UserAgentAPI
+  :<|> StaticFilesAPI
 
 overallAPI :: Proxy OverallAPI
 overallAPI = Proxy
@@ -160,6 +163,16 @@ userAgentServer userAgent =
     Nothing -> return "The user did not specify the User-Agent header"
 
 
+-- Serve static files in a directory
+type StaticFilesAPI = "fixed_mindset" :> Raw
+
+staticFilesAPI :: Proxy StaticFilesAPI
+staticFilesAPI = Proxy
+
+staticFilesServer :: Server StaticFilesAPI
+staticFilesServer = serveDirectoryWebApp "fixed_mindset"
+
+
 -- This is how you support multiple API types
 app :: Application
 app = serve overallAPI $
@@ -167,6 +180,7 @@ app = serve overallAPI $
   :<|> userServer
   :<|> countriesServer
   :<|> userAgentServer
+  :<|> staticFilesServer
 
 
 port :: Int
