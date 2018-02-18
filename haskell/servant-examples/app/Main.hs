@@ -7,6 +7,7 @@ module Main where
 
 import Control.Monad.Except (throwError)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.State (State, evalState, get)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Function ((&))
 import Data.Maybe (listToMaybe)
@@ -28,7 +29,8 @@ import Servant.API.ResponseHeaders (Headers, addHeader)
 import Servant.API.ReqBody (ReqBody)
 import Servant.API.Verbs (Get, Post)
 import Servant.Server
-       (Application, Handler, ServantErr(errBody), Server, err500, serve)
+       (Application, Handler, ServantErr(errBody), Server, ServerT,
+        err500, hoistServer, serve)
 import Servant.Utils.StaticFiles (serveDirectoryWebApp)
 
 type OverallAPI = HealthCheckAPI
@@ -36,6 +38,7 @@ type OverallAPI = HealthCheckAPI
   :<|> CountriesAPI
   :<|> UserAgentAPI
   :<|> StaticFilesAPI
+  :<|> StateMonadAPI
 
 overallAPI :: Proxy OverallAPI
 overallAPI = Proxy
@@ -173,6 +176,31 @@ staticFilesServer :: Server StaticFilesAPI
 staticFilesServer = serveDirectoryWebApp "fixed_mindset"
 
 
+-- Use State monad in place of Handler
+type StateMonadAPI = "state_monad" :> "get" :> Get '[JSON] Int
+  :<|> "state_monad" :> "incr" :> Capture "n" Int :> Get '[JSON] Int
+
+stateToHandler :: State Int a -> Handler a
+stateToHandler s = return $ evalState s 0
+
+stateMonadAPI :: Proxy StateMonadAPI
+stateMonadAPI = Proxy
+
+stateMonadServerT :: ServerT StateMonadAPI (State Int)
+stateMonadServerT = getHandler :<|> incrementHandler
+  where
+    getHandler :: State Int Int
+    getHandler = do
+      x <- get
+      return $ x + 1
+
+    incrementHandler :: Int -> State Int Int
+    incrementHandler n = get >>= \x -> return $ x + n
+
+stateMonadServer :: Server StateMonadAPI
+stateMonadServer = hoistServer stateMonadAPI stateToHandler stateMonadServerT
+
+
 -- This is how you support multiple API types
 app :: Application
 app = serve overallAPI $
@@ -181,6 +209,7 @@ app = serve overallAPI $
   :<|> countriesServer
   :<|> userAgentServer
   :<|> staticFilesServer
+  :<|> stateMonadServer
 
 
 port :: Int
