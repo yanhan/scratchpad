@@ -2,7 +2,7 @@
 
 Some examples of the [servant](http://haskell-servant.readthedocs.io/en/stable/) web framework
 
-Version: 0.11
+Version: 0.13
 
 
 ## To run
