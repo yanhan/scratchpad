@@ -3,18 +3,21 @@
 module Main where
 
 import Control.Applicative (Alternative(empty))
+import Control.Monad (guard)
 import Data.Aeson
        ((.:), (.:?), (.=), (.!=), FromJSON(parseJSON),
         ToJSON(toEncoding, toJSON), Value(Number, Object, String), decode,
         defaultOptions, encode, genericToEncoding, object, withArray,
         withObject)
 import Data.Aeson.Types (Parser, parseMaybe)
+import Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromJust)
 import Data.Scientific (floatingOrInteger, toBoundedInteger)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Data.Vector (toList)
+import Text.Read (readMaybe)
 
 import Lib
 
@@ -113,6 +116,34 @@ instance ToJSON Book where
                            , "bookPrice" .= bookPrice
                            ]
 
+-- Slightly more complicated parsing rules
+data Software = Software { softwareName :: Text, softwareVersion :: Int } deriving (Show)
+
+instance FromJSON Software where
+  parseJSON = withObject "Software" (\o -> do
+    softwareName <- o .: "softwareName"
+    {--
+       Priority:
+       - `softwareVersion` field
+       - `version` field as a string
+       - if none of the above is found and `softwareName` is "PooPoo", then
+         use -2 as default value
+    --}
+    softwareVersion <- asum [ o .: "softwareVersion"
+                            , do ver <- o .: "version"
+                                 case readMaybe ver of
+                                   Just v -> return v
+                                   _ -> fail "expected an Int"
+                            , do guard (softwareName == "PooPoo")
+                                 return $ -2
+                            ]
+    return Software{..})
+
+instance ToJSON Software where
+  toJSON Software{..} = object [ "softwareName" .= softwareName
+                               , "version" .= softwareVersion
+                               ]
+
 
 main :: IO ()
 main = do
@@ -135,3 +166,6 @@ main = do
     "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"
   print (decode "{\"title\": \"Game it\", \"author\": \"Bryan S\", \"bookPrice\": 6.99}" :: Maybe Book)
   print (decode "{\"title\": \"Three Little Dots\", \"author\": \"Will Dragon\"}" :: Maybe Book)
+  print (decode "{\"softwareName\": \"vim\", \"softwareVersion\": 5}" :: Maybe Software)
+  print (decode "{\"softwareName\": \"emacs\", \"version\": \"8\"}" :: Maybe Software)
+  print (decode "{\"softwareName\": \"PooPoo\"}" :: Maybe Software)
