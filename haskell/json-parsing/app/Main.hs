@@ -15,6 +15,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromJust)
 import Data.Scientific (floatingOrInteger, toBoundedInteger)
 import Data.Text (Text)
+import Data.Traversable (for)
 import GHC.Generics (Generic)
 import Data.Vector (toList)
 import Text.Read (readMaybe)
@@ -186,6 +187,39 @@ instance FromJSON Spice where
     climateOfSpice <- spiceCountry .: "climate"
     return Spice{..}
 
+-- JSON with unknown field names.
+-- Suppose we have the following data, where the keys are unknown but they
+-- follow some kind of structure:
+--
+--     {
+--         "brandOne": {
+--             "productOne": 1,
+--             "productTwo": 7
+--         },
+--         "brandTwo": {
+--             "productThree": 12
+--         }
+--     }
+--
+-- We want to parse this JSON into a list of the following:
+data ProductLine =
+  ProductLine { productLineName :: Text
+              , productSales :: [(Text, Int)]
+              } deriving (Show)
+-- More precisely, this:
+-- [ Product "brandOne" [("productOne", 1), ("productTwo", 7)]
+-- , Product "brandTwo" [("productThree", 12)]
+-- ]
+
+parseProductLines :: Value -> Parser [ProductLine]
+parseProductLines = withObject "ProductLines" $ \o ->
+  -- Convert the Object (which is a strict HashMap) into a Haskell List
+  for (HM.toList o) $ \(productLineName, psalesObj) -> do
+    -- productSales :: [(Text, Int)]
+    productSales <- HM.toList <$> parseJSON psalesObj
+    return ProductLine{..}
+
+
 main :: IO ()
 main = do
   putStrLn $ "Encode: " ++ show (encode Car {model = "T", year = 1940} )
@@ -213,3 +247,5 @@ main = do
   print (decode "{\"block\": 100, \"zipCode\": 171100}" :: Maybe House)
   print (decode "{\"condoName\": \"The Lake\", \"zipCode\": 171564}" :: Maybe House)
   print (decode "{\"name\": \"Chili\", \"country\": {\"name\": \"Thailand\", \"climate\": \"tropical\"}}" :: Maybe Spice)
+  print (parseMaybe parseProductLines =<<
+    decode "{\"Hokey\": {\"Dokey\": 5, \"Pricky\": 10}, \"Green\": {\"Barry\": 4}}")
