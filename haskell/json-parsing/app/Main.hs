@@ -79,8 +79,17 @@ parseTuple' = withObject "tuple of (Int, String)" f
 
       return (fieldOne, fieldTwo)
 
+-- Further simplify using (.:) operator
+parseTuple'' :: Value -> Parser (Int, Text)
+parseTuple'' = withObject "tuple of (Int, String)" f
+  where
+    f obj = do
+      fieldOne <- obj .: "one"
+      fieldTwo <- obj .: "two"
+      return (fieldOne, fieldTwo)
+
 parseArray :: Value -> Parser [(Int, Text)]
-parseArray = withArray "array of (Int, String)" (mapM parseTuple' . toList)
+parseArray = withArray "array of (Int, String)" (mapM parseTuple'' . toList)
 
 
 main :: IO ()
@@ -99,5 +108,6 @@ main = do
   print someJson
   print $ parseMaybe parseTuple =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
   print $ parseMaybe parseTuple' =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
+  print $ parseMaybe parseTuple'' =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
   print $ parseMaybe parseArray =<< decode
     "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"
