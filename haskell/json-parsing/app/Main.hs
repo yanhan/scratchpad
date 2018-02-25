@@ -64,8 +64,23 @@ parseTuple = withObject "tuple of (Int, String)" f
 
       return (fieldOne, fieldTwo)
 
+-- This uses the built-in FromJSON instances to simplify parsing
+parseTuple' :: Value -> Parser (Int, Text)
+parseTuple' = withObject "tuple of (Int, String)" f
+  where
+    f obj = do
+      fieldOne <- case HM.lookup "one" obj of
+                    Just x -> parseJSON x
+                    _ -> fail "no field 'one"
+
+      fieldTwo <- case HM.lookup "two" obj of
+                    Just x -> parseJSON x
+                    Nothing -> fail "no field two"
+
+      return (fieldOne, fieldTwo)
+
 parseArray :: Value -> Parser [(Int, Text)]
-parseArray = withArray "array of (Int, String)" (mapM parseTuple . toList)
+parseArray = withArray "array of (Int, String)" (mapM parseTuple' . toList)
 
 
 main :: IO ()
@@ -83,5 +98,6 @@ main = do
   let someJson = decode "{\"hero\": true, \"attributes\":[{\"strength\": 39}, {\"agility\": 100.5}]}" :: Maybe Value
   print someJson
   print $ parseMaybe parseTuple =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
+  print $ parseMaybe parseTuple' =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
   print $ parseMaybe parseArray =<< decode
     "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"
