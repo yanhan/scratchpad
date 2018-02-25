@@ -6,7 +6,7 @@ import Data.Aeson
        ((.:), (.=), FromJSON(parseJSON), ToJSON(toEncoding, toJSON),
         Value(Number, Object, String), decode, defaultOptions, encode,
         genericToEncoding, object, withArray, withObject)
-import Data.Aeson.Types (Parser, parseEither)
+import Data.Aeson.Types (Parser, parseMaybe)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromJust)
 import Data.Scientific (floatingOrInteger, toBoundedInteger)
@@ -82,6 +82,6 @@ main = do
   -- Working with arbitrary JSON data on its AST
   let someJson = decode "{\"hero\": true, \"attributes\":[{\"strength\": 39}, {\"agility\": 100.5}]}" :: Maybe Value
   print someJson
-  print $ parseEither parseTuple $ fromJust . decode $ "{\"one\": 5, \"two\": \"Sever\"}"
-  print $ parseEither parseArray $ fromJust . decode $
+  print $ parseMaybe parseTuple =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
+  print $ parseMaybe parseArray =<< decode
     "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"
