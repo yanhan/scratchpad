@@ -4,10 +4,15 @@ module Main where
 import Control.Applicative (Alternative(empty))
 import Data.Aeson
        ((.:), (.=), FromJSON(parseJSON), ToJSON(toEncoding, toJSON),
-        Value(Object), decode, defaultOptions, encode, genericToEncoding,
-        object)
+        Value(Number, Object, String), decode, defaultOptions, encode,
+        genericToEncoding, object, withArray, withObject)
+import Data.Aeson.Types (Parser, parseEither)
+import qualified Data.HashMap.Strict as HM
+import Data.Maybe (fromJust)
+import Data.Scientific (floatingOrInteger, toBoundedInteger)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Data.Vector (toList)
 
 import Lib
 
@@ -33,6 +38,36 @@ instance FromJSON Food where
 instance ToJSON Food where
   toJSON (Food n p) = object [ "name" .= n, "price" .= p ]
 
+
+-- From https://artyom.me/aeson
+-- This tutorial shows how to define parsers that work on `Value`s
+-- Parser is an instance of MonadFail, which is why we can use the
+-- `fail` function for indicating various failures
+parseTuple :: Value -> Parser (Int, Text)
+parseTuple = withObject "tuple of (Int, String)" f
+  where
+    f obj = do
+      fieldOne <- case HM.lookup "one" obj of
+                    Just (Number x) ->
+                      case floatingOrInteger x of
+                        Right _ ->
+                          case (toBoundedInteger x :: Maybe Int) of
+                            Just y -> return y
+                            _ -> fail $ show x ++ " is too big to convert to an Int"
+                        _ -> fail "expected an Int but got a Float"
+                    Just _ -> fail "expected an Int"
+                    _ -> fail "no field 'one"
+
+      fieldTwo <- case HM.lookup "two" obj of
+                    Just (String x) -> return x
+                    Nothing -> fail "no field two"
+
+      return (fieldOne, fieldTwo)
+
+parseArray :: Value -> Parser [(Int, Text)]
+parseArray = withArray "array of (Int, String)" (mapM parseTuple . toList)
+
+
 main :: IO ()
 main = do
   putStrLn $ "Encode: " ++ show (encode Car {model = "T", year = 1940} )
@@ -47,3 +82,6 @@ main = do
   -- Working with arbitrary JSON data on its AST
   let someJson = decode "{\"hero\": true, \"attributes\":[{\"strength\": 39}, {\"agility\": 100.5}]}" :: Maybe Value
   print someJson
+  print $ parseEither parseTuple $ fromJust . decode $ "{\"one\": 5, \"two\": \"Sever\"}"
+  print $ parseEither parseArray $ fromJust . decode $
+    "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"

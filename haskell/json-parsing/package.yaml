@@ -36,7 +36,10 @@ executables:
     - json-parsing
     - aeson
     - containers
+    - scientific
     - text
+    - unordered-containers
+    - vector
 
 tests:
   json-parsing-test:
