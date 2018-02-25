@@ -7,9 +7,10 @@ import Control.Monad (guard)
 import Data.Aeson
        ((.:), (.:?), (.=), (.!=), FromJSON(parseJSON),
         ToJSON(toEncoding, toJSON), Value(Number, Object, String), decode,
-        defaultOptions, encode, genericToEncoding, object, withArray,
-        withObject)
+        defaultOptions, encode, fieldLabelModifier, genericParseJSON,
+        genericToEncoding, genericToJSON, object, withArray, withObject)
 import Data.Aeson.Types (Parser, parseMaybe)
+import Data.Char (toLower)
 import Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromJust)
@@ -220,6 +221,24 @@ parseProductLines = withObject "ProductLines" $ \o ->
     return ProductLine{..}
 
 
+-- DeriveGeneric with custom field names
+data Chef =
+  Chef { _chefName :: Text
+       , _chefSpecialty :: Text
+       } deriving (Generic, Show)
+
+instance FromJSON Chef where
+  parseJSON = genericParseJSON defaultOptions {
+    fieldLabelModifier = lowerFirstChar . drop 5 }
+
+instance ToJSON Chef where
+  toJSON = genericToJSON defaultOptions {
+    fieldLabelModifier = lowerFirstChar . drop 5 }
+
+lowerFirstChar :: String -> String
+lowerFirstChar (x:xs) = toLower x : xs
+lowerFirstChar [] = []
+
 main :: IO ()
 main = do
   putStrLn $ "Encode: " ++ show (encode Car {model = "T", year = 1940} )
@@ -249,3 +268,5 @@ main = do
   print (decode "{\"name\": \"Chili\", \"country\": {\"name\": \"Thailand\", \"climate\": \"tropical\"}}" :: Maybe Spice)
   print (parseMaybe parseProductLines =<<
     decode "{\"Hokey\": {\"Dokey\": 5, \"Pricky\": 10}, \"Green\": {\"Barry\": 4}}")
+  print (decode "{\"name\": \"M. Batty\", \"specialty\": \"French\"}" :: Maybe Chef)
+  print . encode $ Chef "Tommy Ken"  "Austrian"
