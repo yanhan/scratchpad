@@ -144,6 +144,21 @@ instance ToJSON Software where
                                , "version" .= softwareVersion
                                ]
 
+-- Types with multiple constructors
+data House = HDB { block :: Int, zipCode :: Int }
+           | Condo { condoName :: Text, zipCode :: Int }
+           deriving Show
+
+instance FromJSON House where
+  parseJSON = withObject "HDB or Condo" $ \o ->
+    asum [ HDB <$> o .: "block" <*> o .: "zipCode"
+         , Condo <$> o .: "condoName" <*> o .: "zipCode"
+         ]
+
+instance ToJSON House where
+  toJSON HDB{..} = object [ "block" .= block, "zipCode" .= zipCode ]
+  toJSON Condo{..} = object [ "condoName" .= condoName, "zipCode" .= zipCode ]
+
 
 main :: IO ()
 main = do
@@ -169,3 +184,5 @@ main = do
   print (decode "{\"softwareName\": \"vim\", \"softwareVersion\": 5}" :: Maybe Software)
   print (decode "{\"softwareName\": \"emacs\", \"version\": \"8\"}" :: Maybe Software)
   print (decode "{\"softwareName\": \"PooPoo\"}" :: Maybe Software)
+  print (decode "{\"block\": 100, \"zipCode\": 171100}" :: Maybe House)
+  print (decode "{\"condoName\": \"The Lake\", \"zipCode\": 171564}" :: Maybe House)
