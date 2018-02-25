@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Control.Applicative (Alternative(empty))
 import Data.Aeson
-       ((.:), (.=), FromJSON(parseJSON), ToJSON(toEncoding, toJSON),
-        Value(Number, Object, String), decode, defaultOptions, encode,
-        genericToEncoding, object, withArray, withObject)
+       ((.:), (.:?), (.=), (.!=), FromJSON(parseJSON),
+        ToJSON(toEncoding, toJSON), Value(Number, Object, String), decode,
+        defaultOptions, encode, genericToEncoding, object, withArray,
+        withObject)
 import Data.Aeson.Types (Parser, parseMaybe)
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe (fromJust)
@@ -91,6 +93,26 @@ parseTuple'' = withObject "tuple of (Int, String)" f
 parseArray :: Value -> Parser [(Int, Text)]
 parseArray = withArray "array of (Int, String)" (mapM parseTuple'' . toList)
 
+-- Optional field in the JSON representation
+data Book = Book { title :: Text, author :: Text, bookPrice :: Double }
+  deriving Show
+
+instance FromJSON Book where
+  parseJSON = withObject "Book" (\v -> do
+    title <- v .: "title"
+    author <- v .: "author"
+    -- Default to $10 for bookPrice if it is not present
+    bookPrice <- v .:? "bookPrice" .!= 10
+    -- Below is a use of the RecordWildCards extension
+    return Book{..})
+
+instance ToJSON Book where
+  -- Below is a use of the RecordWildCards extension
+  toJSON Book{..} = object [ "title" .= title
+                           , "author" .= author
+                           , "bookPrice" .= bookPrice
+                           ]
+
 
 main :: IO ()
 main = do
@@ -111,3 +133,5 @@ main = do
   print $ parseMaybe parseTuple'' =<< decode  "{\"one\": 5, \"two\": \"Sever\"}"
   print $ parseMaybe parseArray =<< decode
     "[{\"one\": 7, \"two\": \"Up\"}, {\"one\": 33, \"two\": \"Sprint\"}]"
+  print (decode "{\"title\": \"Game it\", \"author\": \"Bryan S\", \"bookPrice\": 6.99}" :: Maybe Book)
+  print (decode "{\"title\": \"Three Little Dots\", \"author\": \"Will Dragon\"}" :: Maybe Book)
