@@ -160,6 +160,32 @@ instance ToJSON House where
   toJSON Condo{..} = object [ "condoName" .= condoName, "zipCode" .= zipCode ]
 
 
+-- Convert nested JSON object (received as a ByteString) into single layer
+-- Haskell datatype.
+-- Suppose the received ByteString has this format:
+--
+--     {
+--         "name": "spice name",
+--         "country": {
+--             "name": "country name",
+--             "climate": "country climate"
+--         }
+--     }
+-- and we want to decode such ByteStrings to the Spice datatype below
+data Spice =
+  Spice { spiceName :: Text
+        , countryOfSpice :: Text
+        , climateOfSpice :: Text
+        } deriving Show
+
+instance FromJSON Spice where
+  parseJSON = withObject "Spice" $ \o -> do
+    spiceName <- o .: "name"
+    spiceCountry <- o .: "country"
+    countryOfSpice <- spiceCountry .: "name"
+    climateOfSpice <- spiceCountry .: "climate"
+    return Spice{..}
+
 main :: IO ()
 main = do
   putStrLn $ "Encode: " ++ show (encode Car {model = "T", year = 1940} )
@@ -186,3 +212,4 @@ main = do
   print (decode "{\"softwareName\": \"PooPoo\"}" :: Maybe Software)
   print (decode "{\"block\": 100, \"zipCode\": 171100}" :: Maybe House)
   print (decode "{\"condoName\": \"The Lake\", \"zipCode\": 171564}" :: Maybe House)
+  print (decode "{\"name\": \"Chili\", \"country\": {\"name\": \"Thailand\", \"climate\": \"tropical\"}}" :: Maybe Spice)
